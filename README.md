@@ -5,6 +5,8 @@ TODO:
 * Implement deadband when amp is close to max to avoid ping pong up and down
 * Comments/documentation
 * Possibly making code more general and less specific to my setup
+* Implement manual mode - off (already in place-smartcharge switch?) - and without id4 integration (manual SoC and target SoC sliders)
+
 
 
 
