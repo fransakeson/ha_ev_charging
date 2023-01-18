@@ -193,8 +193,6 @@ input_boolean:
     name: Smart charging
   charger_run:
     name: Charge
-  #cheap_electricity_simulated_switch:
-  #  name: Cheap hours trigger
 
 input_number:
   car_needed_hours:
@@ -313,8 +311,6 @@ automation:
       entity_id: input_boolean.car_smart_charging
       state: 'on'
     action:
-    #- service: input_boolean.turn_on
-    #  entity_id: input_boolean.cheap_electricity_simulated_switch
     - service: input_boolean.turn_on
       entity_id: input_boolean.charger_run
     mode: single
@@ -330,8 +326,6 @@ automation:
       entity_id: input_boolean.car_smart_charging
       state: 'on'
     action:
-    #- service: input_boolean.turn_off
-    #  entity_id: input_boolean.cheap_electricity_simulated_switch
     - service: input_boolean.turn_off
       entity_id: input_boolean.charger_run
     mode: single
