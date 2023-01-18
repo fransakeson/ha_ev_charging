@@ -1,0 +1,403 @@
+# TODO:
+# if car_ready_at is tomorrow AND tomorrow_valid=false, only use today - CHECK IF DONE?
+# implement deadband when amp is close to max to avoid ping pong up and down
+
+sensor:
+  - platform: template
+    sensors:
+      cheapest_sequential_spot_hours_input:
+        device_class: timestamp
+        friendly_name: "Cheapest sequential hours"
+        value_template: >
+          {%- set numberOfSequentialHours = states('input_number.car_needed_hours') | int(0) -%}
+          {%- set firstHour = ((as_timestamp(now() ) | timestamp_custom('%H')) | int(0) ) -%} 
+          {%- set readyHour = as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
+          {%- set nowHour = as_timestamp(now(),"%H:%M:%S")|timestamp_custom('%H')|int(0) -%}
+          {%- if readyHour < nowHour and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true -%}
+            {%- set lastHour= 25 + as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S")) | timestamp_custom('%H') | int(0) -%}
+          {% elif readyHour < nowHour %}
+            {% set lastHour = 24 %}
+          {% else %}
+            {%- set lastHour = as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S")) | timestamp_custom('%H') | int(0) -%}
+          {% endif %}
+          {%- if state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and now().hour >=13 -%}
+            {%- set ns = namespace(counter=0, list=[], cheapestHour=today_at("00:00") + timedelta( hours = (24)), cheapestPrice=999.00) -%}
+            {%- for i in range(firstHour, lastHour ) -%}
+              {%- set ns.counter = 0.0 -%}
+              {%- for j in range(i-numberOfSequentialHours, i) -%}
+                {%- if j < 24 -%}
+                  {%- set ns.counter = ns.counter + state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'today')[j] -%}
+                {%- else -%}
+                  {%- set ns.counter = ns.counter + state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow')[j-24] -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {%- set ns.list = ns.list + [ns.counter] -%}
+              {%- if ns.counter < ns.cheapestPrice -%}
+                {%- set ns.cheapestPrice = ns.counter -%}
+                {%- set ns.cheapestHour = today_at("00:00") + timedelta( hours = (i - numberOfSequentialHours )) -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.cheapestHour }}
+            {%- set ns.cheapestPrice = (ns.cheapestPrice / numberOfSequentialHours) -%}
+          {%- else -%}
+            {%- set ns = namespace(counter=0, list=[], cheapestHour=today_at("00:00") + timedelta( hours = (24)), cheapestPrice=999.00) -%}
+            {%- for i in range(firstHour + numberOfSequentialHours, lastHour + 1) -%}
+              {%- set ns.counter = 0.0 -%}
+              {%- for j in range(i-numberOfSequentialHours, i) -%}
+                {%- set ns.counter = ns.counter + state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'today')[j] -%}
+              {%- endfor -%}
+              {%- set ns.list = ns.list + [ns.counter] -%}
+              {%- if ns.counter < ns.cheapestPrice -%}
+                {%- set ns.cheapestPrice = ns.counter -%}
+                {%- set ns.cheapestHour = today_at("00:00") + timedelta( hours = (i - numberOfSequentialHours )) -%}
+              {%- endif -%}
+            {%- endfor -%}
+            {{ ns.cheapestHour }}
+            {%- set ns.cheapestPrice = (ns.cheapestPrice / numberOfSequentialHours) -%}
+          {%- endif -%}
+
+      charging_mean_price: 
+        friendly_name: "Mean price"
+        value_template: >
+          {%- set startHour = as_timestamp(strptime(states('input_datetime.device_start_time'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
+          {%- set endHour = as_timestamp(strptime(states('input_datetime.device_end_time'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
+          {%- set nowHour = as_timestamp(now(),"%H:%M:%S")|timestamp_custom('%H')|int(0) -%}
+          {% if endHour == 0 and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == false %} 
+            {% set endHour = 24 %} 
+          {% endif %}     
+          {% if startHour >= nowHour %} 
+            {% set sd = 'raw_today' %}
+          {% else %}
+            {% set sd = 'raw_tomorrow' %}
+          {% endif %}
+          {% if endHour < startHour %}
+            {% set ed = 'raw_tomorrow' %}
+          {% else %}
+            {% set ed = sd %}
+          {% endif %}
+          {%- set ns = namespace(counter=0) %} 
+          {% if sd == ed %}
+            {% set data = namespace(value=[]) %}
+            {% set l=state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', sd) %}
+            {%- for item in l[startHour:endHour] %}
+              {% set data.value = data.value + [item] %}
+              {%- set ns.counter = ns.counter + 1 %}
+            {%- endfor %}
+            {%- if ns.counter > 0 -%}
+              {{ ("%.3f"|format(data.value| sum(attribute='value'))|float(0)/ns.counter) | round(3) }}
+            {% else %}
+              Unknown
+            {%- endif %}
+          {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid')  %}
+            {% set data = namespace(value=[]) %}
+            {% set l=state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', sd) %}
+            {%- for item in l[startHour:24] %}
+              {% set data.value = data.value + [item] %}
+              {%- set ns.counter = ns.counter + 1 %}
+            {%- endfor %}
+            {% set l=state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', ed) %}
+            {%- for item in l[0:endHour] %}
+              {% set data.value = data.value + [item] %}
+              {%- set ns.counter = ns.counter + 1 %}
+            {%- endfor %}
+            {%- if ns.counter > 0 -%}
+              {{ ("%.3f"|format(data.value| sum(attribute='value'))|float(0)/ns.counter) | round(3) }}
+            {% else %}
+              Unknown
+            {% endif %}
+          {% else %}
+            Unknown
+          {% endif %}
+
+      charger_l1_available:
+        friendly_name: "Charger L1 available"
+        value_template: >
+          {% set old_a = ( states('sensor.charger_l1_available') | int(0) ) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (24 - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
+          {% if a > 16 %}
+            {% set a = 16 %}
+          {% endif %}
+          {% if a < 5 %}
+            {% set a = 5 %}
+          {% endif %}
+          {% if a < old_a %}
+            {{ a }}
+          {% elif a > old_a and states('timer.charger_timer_amps') != 'active' %}
+            {{ a }}
+          {% else %}
+            {{ old_a }}
+          {% endif %}
+      charger_l2_available:
+        friendly_name: "Charger L2 available"
+        value_template: >
+          {% set old_a = ( states('sensor.charger_l2_available') | int(0) ) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (24 - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
+          {% if a > 16 %}
+            {% set a = 16 %}
+          {% endif %}
+          {% if a < 5 %}
+            {% set a = 5 %}
+          {% endif %}
+          {% if a < old_a %}
+            {{ a }}
+          {% elif a > old_a and states('timer.charger_timer_amps') != 'active' %}
+            {{ a }}
+          {% else %}
+            {{ old_a }}
+          {% endif %}
+      charger_l3_available:
+        friendly_name: "Charger L3 available"
+        value_template: >
+          {% set old_a = ( states('sensor.charger_l3_available') | int(0) ) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (24 - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
+          {% if a > 16 %}
+            {% set a = 16 %}
+          {% endif %}
+          {% if a < 5 %}
+            {% set a = 5 %}
+          {% endif %}
+          {% if a < old_a %}
+            {{ a }}
+          {% elif a > old_a and states('timer.charger_timer_amps') != 'active' %}
+            {{ a }}
+          {% else %}
+            {{ old_a }}
+          {% endif %}
+
+# Helpers to keep the start / end time
+input_datetime:
+  device_start_time:
+    name: Device Start Time
+    has_time: true
+    has_date: false
+  device_end_time:
+    name: Device End Time
+    has_time: true
+    has_date: false
+  car_ready_at:
+    name: Car ready time
+    has_time: true
+    has_date: false
+
+input_select:
+  car_charge_mode:
+    name: Charger mode
+    options:
+      - Schedule
+      - SoC
+    initial: Schedule
+    icon: mdi:car-battery
+
+input_boolean:
+  car_load_balance:
+    name: Load balancing
+  car_smart_charging:
+    name: Smart charging
+  charger_run:
+    name: Charge
+  #cheap_electricity_simulated_switch:
+  #  name: Cheap hours trigger
+
+input_number:
+  car_needed_hours:
+    name: Hours needed
+    max: 100
+    min: 0
+    mode: box
+
+timer:
+  charger_timer_amps:
+    duration: 60
+    name: Load balance timer
+
+# Automations
+automation:
+  - id: '1662198489322'
+    alias: 'Start amp timer'
+    description: ''
+    trigger:
+      - platform: state
+        entity_id: sensor.charger_l1_available
+      - platform: state
+        entity_id: sensor.charger_l2_available
+      - platform: state
+        entity_id: sensor.charger_l3_available
+      - platform: state
+        entity_id: input_boolean.charger_run
+        to: 'on'
+    condition:
+      - condition: state
+        entity_id: timer.charger_timer_amps
+        state: idle
+      - condition: state
+        entity_id: input_boolean.charger_run
+        state: 'on'
+    action:
+      - service: timer.start
+        entity_id: timer.charger_timer_amps
+
+  - id: '1663398489322'
+    alias: 'Set end/start time for SoC mode'
+    description: ''
+    trigger:
+    - platform: state
+      entity_id: sensor.ehnyvjcv_status
+      to: 'awaiting_start'
+    - platform: state
+      entity_id: input_select.car_charge_mode
+      to: 'SoC'
+    condition:
+    - condition: not
+      conditions:
+      - condition: state
+        entity_id: sensor.cheapest_sequential_spot_hours_input
+        state: unknown
+    - condition: state
+      entity_id: input_select.car_charge_mode
+      state: "SoC"
+    action:
+    - service: input_number.set_value
+      data:
+        value: "{{ ((( ( states('number.id_4_target_state_of_charge') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100)*78) /9) | round(0,'ceil') }}"
+        # 78 kWh batt, 9 kW avg power
+      target:
+        entity_id: input_number.car_needed_hours
+    - service: input_datetime.set_datetime
+      data:
+        time: '{{ as_timestamp(states(''sensor.cheapest_sequential_spot_hours_input'')) | timestamp_custom(''%H:%M'') }}'
+      target:
+        entity_id: input_datetime.device_start_time
+    - service: input_datetime.set_datetime
+      data:
+        time: '{{ ((as_timestamp(states(''sensor.cheapest_sequential_spot_hours_input'')) + (3600* states(''input_number.car_needed_hours'')|int(0) )) | timestamp_custom(''%H:%M'')) }}'
+      target:
+        entity_id: input_datetime.device_end_time
+    mode: single
+
+  # Set needed hours in Schedule mode
+  - id: '1663398489323'
+    alias: 'Set needed hours for Schedule mode'
+    description: ''
+    trigger:
+    - platform: state
+      entity_id: sensor.ehnyvjcv_status
+      to: 'awaiting_start'
+    - platform: state
+      entity_id: input_select.car_charge_mode
+      to: 'Schedule'
+    - platform: state
+      entity_id: input_datetime.device_start_time
+    - platform: state
+      entity_id: input_datetime.device_end_time
+    condition:
+    - condition: state
+      entity_id: input_select.car_charge_mode
+      state: 'Schedule'
+    action:
+    - service: input_number.set_value
+      data:
+        value: >
+          {%- set startHour = as_timestamp(strptime(states('input_datetime.device_start_time'),"%H:%M:%S")) -%}
+          {%- set endHour = as_timestamp(strptime(states('input_datetime.device_end_time'),"%H:%M:%S")) -%}
+          {{ (endHour-startHour)|timestamp_custom('%H')|int(0)-1 }}      
+      target:
+        entity_id: input_number.car_needed_hours
+    mode: single
+
+  - id: '1663399614858'
+    alias: Turn on switch on start time
+    description: ''
+    trigger:
+    - platform: time
+      at: input_datetime.device_start_time
+    condition:
+    - condition: state
+      entity_id: input_boolean.car_smart_charging
+      state: 'on'
+    action:
+    #- service: input_boolean.turn_on
+    #  entity_id: input_boolean.cheap_electricity_simulated_switch
+    - service: input_boolean.turn_on
+      entity_id: input_boolean.charger_run
+    mode: single
+
+  - id: '1663399614818'
+    alias: Turn off switch after end time
+    description: ''
+    trigger:
+    - platform: time
+      at: input_datetime.device_end_time
+    condition:
+    - condition: state
+      entity_id: input_boolean.car_smart_charging
+      state: 'on'
+    action:
+    #- service: input_boolean.turn_off
+    #  entity_id: input_boolean.cheap_electricity_simulated_switch
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.charger_run
+    mode: single
+
+  - id: '1663393614828'
+    alias: Turn on charger
+    description: ''
+    trigger:
+    - platform: state
+      entity_id: input_boolean.charger_run
+      to: 'on'
+    condition: []
+    action:
+    - service: script.charger_resume
+    - service: timer.start
+      entity_id: timer.charger_timer_amps
+    mode: single
+
+  - id: '1663199614118'
+    alias: Turn off charger
+    description: ''
+    trigger:
+    - platform: state
+      entity_id: input_boolean.charger_run
+      to: 'off'
+    condition: []
+    action:
+    - service: easee.pause
+      data: 
+        charger_id: EHNYVJCV
+    - service: timer.finish
+      entity_id: timer.charger_timer_amps
+    mode: single
+
+
+  - id: '1648389547513'
+    alias: Set_ev_charger_amps
+    description: Set EV charger amps
+    trigger:
+    - platform: state
+      entity_id: sensor.charger_l1_available
+    - platform: state
+      entity_id: sensor.charger_l2_available
+    - platform: state
+      entity_id: sensor.charger_l3_available
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.charger_timer_amps
+      context: {}
+    condition:
+    - condition: state
+      entity_id: input_boolean.charger_run
+      state: 'on'
+    - condition: state
+      entity_id: input_boolean.car_load_balance
+      state: 'on'
+    action: 
+    - service: easee.set_circuit_dynamic_limit 
+      data:
+        circuit_id: 384858
+        currentP1: "{{ states('sensor.charger_l1_available') | int(0) }}"
+        currentP2: "{{ states('sensor.charger_l2_available') | int(0) }}"
+        currentP3: "{{ states('sensor.charger_l3_available') | int(0) }}"
+    mode: single
+    max_exceeded: silent
+
