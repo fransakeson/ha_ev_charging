@@ -1,6 +1,4 @@
-# TODO:
-# if car_ready_at is tomorrow AND tomorrow_valid=false, only use today - CHECK IF DONE?
-# implement deadband when amp is close to max to avoid ping pong up and down
+# https://github.com/fransakeson/ha_ev_charging
 
 sensor:
   - platform: template
