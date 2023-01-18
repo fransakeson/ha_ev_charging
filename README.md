@@ -1,4 +1,5 @@
 ## HomeAssistant, Easee, ID.4 Smart Charging + Load Balance ##
+Was based on https://github.com/kotope/ha_nordpool_cheapest_hours, but close to 100% rewritten
 
 TODO:
 * If car_ready_at is tomorrow AND tomorrow_valid=false, only use today - CHECK IF DONE?
@@ -11,15 +12,8 @@ TODO:
 
 
 
-Original from fork:
 
-## Nordpool chepeast hours automation package for Home Assistant.
-
-Calculates sequential cheapest hours for the next day using Nordpool automation
-
-####
-Full setup guide and introduction at https://www.creatingsmarthome.com/?p=1211
 
 ## Support the developer?
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/tokorhon)
+[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://www.buymeacoffee.com/fransakeson)
 
