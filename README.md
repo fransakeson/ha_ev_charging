@@ -1,3 +1,15 @@
+## HomeAssistant, Easee, ID.4 Smart Charging + Load Balance ##
+
+TODO:
+* If car_ready_at is tomorrow AND tomorrow_valid=false, only use today - CHECK IF DONE?
+* Implement deadband when amp is close to max to avoid ping pong up and down
+* Comments/documentation
+* Possibly making code more general and less specific to my setup
+
+
+
+
+Original from fork:
 
 ## Nordpool chepeast hours automation package for Home Assistant.
 
