@@ -16,14 +16,14 @@ homeassistant:
 ```
 
 ## Configuration / Setup ##
-To be updated
+See initial comments in `ha_ev_charging.yaml`
 
 ## To do ##
 * If car_ready_at is tomorrow AND tomorrow_valid=false, only use today - CHECK IF DONE?
 * Implement deadband when amp is close to max to avoid ping pong up and down
-* Comments/documentation
-* Possibly making code more general and less specific to my setup
-* Implement manual mode - off (already in place-smartcharge switch?) - and without id4 integration (manual SoC and target SoC sliders)
+* More comments/documentation
+* Make code more general and less specific to my setup
+* Implement fallback without car integration (manual SoC and target SoC sliders)
 
 
 
