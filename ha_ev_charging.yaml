@@ -33,9 +33,12 @@ sensor:
       # Guesstimate of average charging power in kW
       average_charging_power:
         value_template: 9
-      # Max load allowed for circuit fuses (with some margin, e.g. I have 25 A per phase and set max to 24)
+      # Max load allowed for circuit fuses in ampere (with some margin, e.g. I have 25 A per phase and set max to 24)
       max_load_circuit:
         value_template: 24
+      # Max load allowed for charger in ampere
+      max_load_charger:
+        value_template: 16
 
       # Find the cheapest period based on number of hours needed to charge
       cheapest_sequential_spot_hours_input:
@@ -119,7 +122,7 @@ sensor:
             {% else %}
               Unknown
             {%- endif %}
-          {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid')  %}
+          {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true  %}
             {% set data = namespace(value=[]) %}
             {% set l=state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', sd) %}
             {%- for item in l[startHour:24] %}
@@ -146,11 +149,11 @@ sensor:
         value_template: >
           {% set old_a = ( states('sensor.charger_l1_available') | int(0) ) %}
           {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
-          {% if a > 16 %}
-            {% set a = 16 %}
+          {% if a > states('sensor.max_load_charger') | int(0) %}
+            {% set a = states('sensor.max_load_charger') | int(0) %}
           {% endif %}
-          {% if a < 5 %}
-            {% set a = 5 %}
+          {% if a < 1 %}
+            {% set a = 1 %}
           {% endif %}
           {% if a < old_a %}
             {{ a }}
@@ -165,11 +168,11 @@ sensor:
         value_template: >
           {% set old_a = ( states('sensor.charger_l2_available') | int(0) ) %}
           {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
-          {% if a > 16 %}
-            {% set a = 16 %}
+          {% if a > states('sensor.max_load_charger') | int(0) %}
+            {% set a = states('sensor.max_load_charger') | int(0) %}
           {% endif %}
-          {% if a < 5 %}
-            {% set a = 5 %}
+          {% if a < 1 %}
+            {% set a = 1 %}
           {% endif %}
           {% if a < old_a %}
             {{ a }}
@@ -184,11 +187,11 @@ sensor:
         value_template: >
           {% set old_a = ( states('sensor.charger_l3_available') | int(0) ) %}
           {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
-          {% if a > 16 %}
-            {% set a = 16 %}
+          {% if a > states('sensor.max_load_charger') | int(0) %}
+            {% set a = states('sensor.max_load_charger') | int(0) %}
           {% endif %}
-          {% if a < 5 %}
-            {% set a = 5 %}
+          {% if a < 1 %}
+            {% set a = 1 %}
           {% endif %}
           {% if a < old_a %}
             {{ a }}
