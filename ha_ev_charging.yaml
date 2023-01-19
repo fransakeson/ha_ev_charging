@@ -97,7 +97,7 @@ sensor:
           {%- set startHour = as_timestamp(strptime(states('input_datetime.device_start_time'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
           {%- set endHour = as_timestamp(strptime(states('input_datetime.device_end_time'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
           {%- set nowHour = as_timestamp(now(),"%H:%M:%S")|timestamp_custom('%H')|int(0) -%}
-          {% if endHour == 0 and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == false %} 
+          {% if endHour == 0 %} 
             {% set endHour = 24 %} 
           {% endif %}     
           {% if startHour >= nowHour %} 
@@ -121,7 +121,7 @@ sensor:
             {%- if ns.counter > 0 -%}
               {{ ("%.3f"|format(data.value| sum(attribute='value'))|float(0)/ns.counter) | round(3) }}
             {% else %}
-              Unknown
+              Unknown1
             {%- endif %}
           {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true  %}
             {% set data = namespace(value=[]) %}
@@ -138,10 +138,10 @@ sensor:
             {%- if ns.counter > 0 -%}
               {{ ("%.3f"|format(data.value| sum(attribute='value'))|float(0)/ns.counter) | round(3) }}
             {% else %}
-              Unknown
+              Unknown2
             {% endif %}
           {% else %}
-            Unknown
+            Unknown3
           {% endif %}
 
       # Calculate load available to the charger
@@ -318,19 +318,13 @@ automation:
     - platform: state
       entity_id: input_select.car_charge_mode
       to: 'SoC'
-    condition:
-    - condition: not
-      conditions:
-      - condition: state
-        entity_id: sensor.cheapest_sequential_spot_hours_input
-        state: unknown
-    - condition: state
-      entity_id: input_select.car_charge_mode
-      state: 'SoC'
+    - platform: state
+      entity_id: input_number.car_local_target_soc
+    condition: []
     action:
     - service: input_number.set_value
       data:
-        value: "{{ ((( ( states('input_number.car_local_target_soc') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('car_battery_capacity') | int(0) ) / states('average_charging_power') | int(1) ) | round(0,'ceil') }}"
+        value: "{{ ((( ( states('input_number.car_local_target_soc') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('sensor.car_battery_capacity') | int(0) ) / states('sensor.average_charging_power') | int(1) ) | round(0,'ceil') }}"
       target:
         entity_id: input_number.car_needed_hours
     - service: input_datetime.set_datetime
