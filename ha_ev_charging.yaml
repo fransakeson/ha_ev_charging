@@ -90,6 +90,7 @@ sensor:
             {{ ns.cheapestHour }}
           {%- endif -%}
 
+      # Calculate mean hourly price for startTime to endTime
       charging_mean_price: 
         friendly_name: "Mean price"
         value_template: >
@@ -143,6 +144,7 @@ sensor:
             Unknown
           {% endif %}
 
+      # Calculate load available to the charger
       charger_l1_available:
         friendly_name: "Charger L1 available"
         unit_of_measurement: 'A'
@@ -201,7 +203,7 @@ sensor:
             {{ old_a }}
           {% endif %}
 
-# Helpers to keep the start / end time
+# Helpers for start- and end time
 input_datetime:
   device_start_time:
     name: Device Start Time
@@ -216,6 +218,7 @@ input_datetime:
     has_time: true
     has_date: false
 
+# Selector for charging modes
 input_select:
   car_charge_mode:
     name: Charger mode
@@ -225,6 +228,7 @@ input_select:
     initial: Schedule
     icon: mdi:car-battery
 
+# Switches
 input_boolean:
   car_load_balance:
     name: Load balancing
@@ -233,18 +237,28 @@ input_boolean:
   charger_run:
     name: Charge
 
+# Input numbers
 input_number:
   car_needed_hours:
     name: Hours needed
     max: 100
     min: 0
     mode: box
+  # Local target SoC to workaround buggy wecharge
+  car_local_target_soc:
+    name: SoC Target
+    max: 100
+    min: 50
+    step: 10
+    mode: slider
 
+# Timer for cooldown period after charger amps have been changed. Only relevant when increasing amp
 timer:
   charger_timer_amps:
     duration: 60
     name: Load balance timer
 
+# Script to pause charger instead of stopping as stopping ends the session
 script:    
   charger_resume:
     alias: charger_resume
@@ -268,7 +282,7 @@ script:
     icon: mdi:play-circle-outline
 
 
-# Automations
+# Start cooldown timer
 automation:
   - id: '1662198489322'
     alias: 'Start amp timer'
@@ -316,7 +330,7 @@ automation:
     action:
     - service: input_number.set_value
       data:
-        value: "{{ ((( ( states('number.id_4_target_state_of_charge') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('car_battery_capacity') | int(0) ) / states('average_charging_power') | int(1) ) | round(0,'ceil') }}"
+        value: "{{ ((( ( states('input_number.car_local_target_soc') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('car_battery_capacity') | int(0) ) / states('average_charging_power') | int(1) ) | round(0,'ceil') }}"
       target:
         entity_id: input_number.car_needed_hours
     - service: input_datetime.set_datetime
@@ -377,7 +391,7 @@ automation:
     mode: single
 
   - id: '1663399614818'
-    alias: Turn off switch after end time
+    alias: Turn off charger after end time - Schedule mode
     description: ''
     trigger:
     - platform: time
@@ -386,6 +400,29 @@ automation:
     - condition: state
       entity_id: input_boolean.car_smart_charging
       state: 'on'
+    - condition: state
+      entity_id: input_select.car_charge_mode
+      state: 'Schedule'
+    action:
+    - service: input_boolean.turn_off
+      entity_id: input_boolean.charger_run
+    mode: single
+
+  - id: '1663799114818'
+    alias: Turn off charger - SoC mode
+    description: ''
+    trigger:
+    - platform: time
+      at: input_datetime.device_end_time
+    condition:
+    - condition: state
+      entity_id: input_boolean.car_smart_charging
+      state: 'on'
+    - condition: state
+      entity_id: input_select.car_charge_mode
+      state: 'SoC'
+    - condition: template
+      value_template: "{{ states('sensor.id_4_state_of_charge') | int(0) >= states('input_number.car_local_target_soc') | int(0) }}"
     action:
     - service: input_boolean.turn_off
       entity_id: input_boolean.charger_run
@@ -421,7 +458,6 @@ automation:
       entity_id: timer.charger_timer_amps
     mode: single
 
-
   - id: '1648389547513'
     alias: Set_ev_charger_amps
     description: Set EV charger amps
@@ -454,3 +490,17 @@ automation:
     mode: single
     max_exceeded: silent
 
+  - id: '1678319547213'
+    alias: Set_target_SoC
+    description: Set target SoC from local setting to car setting
+    trigger:
+    - platform: state
+      entity_id: input_number.car_local_target_soc
+    condition: []
+    action:
+    - service: number.set_value 
+      data:
+        value: "{{ states('input_number.car_local_target_soc') | int(80) }}"
+      target:
+        entity_id: number.id_4_target_state_of_charge
+    mode: single
