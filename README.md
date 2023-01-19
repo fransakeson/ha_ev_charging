@@ -15,7 +15,7 @@ homeassistant:
     ha_ev_charging: !include ha_ev_charging.yaml
 ```
 
-## Configuration / Setup ##
+## Configuration ##
 See initial comments in `ha_ev_charging.yaml`
 
 
