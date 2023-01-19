@@ -4,7 +4,7 @@ Was based on https://github.com/kotope/ha_nordpool_cheapest_hours, along with th
 ## This package uses ## 
 * Nordpool (https://github.com/custom-components/nordpool) - Needed to figure out cheapest period.
 * Easee (https://github.com/fondberg/easee_hass) - Needed to control charger. Start, stop and set current. Should be easy to replace with an integration of your choice.
-* Volkswagen We Connect ID (https://github.com/mitch-dc/volkswagen_we_connect_id) - Only needed to know current and target SoC. Should be easy to replace with an integration of your choice.
+* Volkswagen We Connect ID (https://github.com/mitch-dc/volkswagen_we_connect_id) - Only needed to know current SoC. Should be easy to replace with an integration of your choice.
 
 ## Install ##
 Download yaml package to your homeassistant configuration directory and add this block to `configuration.yaml`
