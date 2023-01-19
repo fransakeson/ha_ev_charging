@@ -122,6 +122,7 @@ sensor:
 
       charger_l1_available:
         friendly_name: "Charger L1 available"
+        unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l1_available') | int(0) ) %}
           {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (24 - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
@@ -140,6 +141,7 @@ sensor:
           {% endif %}
       charger_l2_available:
         friendly_name: "Charger L2 available"
+        unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l2_available') | int(0) ) %}
           {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') |float(0) + (24 - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
@@ -158,6 +160,7 @@ sensor:
           {% endif %}
       charger_l3_available:
         friendly_name: "Charger L3 available"
+        unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l3_available') | int(0) ) %}
           {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') |float(0) + (24 - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
