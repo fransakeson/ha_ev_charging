@@ -1,21 +1,43 @@
 # https://github.com/fransakeson/ha_ev_charging
-# Search and replace:
+# 
+# The following entities need to be changed to match your setup
+#
+# Nordpool entity:
 # sensor.nordpool_kwh_se4_sek_3_10_025 - nordpool price sensor
-# state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') - charger phase 1 
-# state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') - charger phase 2
-# state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') - charger phase 3
-# sensor.l1_amp - circuit phase 1 load
-# sensor.l2_amp - circuit phase 2 load
-# sensor.l3_amp - circuit phase 3 load
+#
+# Charger entities:
 # sensor.ehnyvjcv_status - Charger status, check strings to match
-# states('number.id_4_target_state_of_charge') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100)*78) /9) - Change sensors for your car. *78 is battery size in kWh, /9 is expected average charging power in kW 
+# state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') - charger phase 1 in ampere 
+# state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') - charger phase 2 in ampere
+# state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') - charger phase 3 in ampere
+#
+# Electricity meter entities:
+# states('sensor.l1_amp') - circuit phase 1 load in ampere
+# states('sensor.l1_amp') - circuit phase 2 load in ampere
+# states('sensor.l1_amp') - circuit phase 3 load in ampere
+#
+# Car entities:
+# states('number.id_4_target_state_of_charge') - Target SoC in percent 
+# states('sensor.id_4_state_of_charge') - Current SoC in percent
 #
 # Check the 'turn on charger' and 'turn off charger' automations to match your charger's integration
 # Check 'Set_ev_charger_amps' automation to match your charger's dynamic control
+#
 
 sensor:
   - platform: template
     sensors:
+      # Set your car's battery size in kWh
+      car_battery_capacity:
+        value_template: 78
+      # Guesstimate of average charging power in kW
+      average_charging_power:
+        value_template: 9
+      # Max load allowed for circuit fuses (with some margin, e.g. I have 25 A per phase and set max to 24)
+      max_load_circuit:
+        value_template: 24
+
+      # Find the cheapest period based on number of hours needed to charge
       cheapest_sequential_spot_hours_input:
         device_class: timestamp
         friendly_name: "Cheapest sequential hours"
@@ -24,14 +46,14 @@ sensor:
           {%- set firstHour = ((as_timestamp(now() ) | timestamp_custom('%H')) | int(0) ) -%} 
           {%- set readyHour = as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
           {%- set nowHour = as_timestamp(now(),"%H:%M:%S")|timestamp_custom('%H')|int(0) -%}
-          {%- if readyHour < nowHour and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true -%}
+          {%- if readyHour < nowHour and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true -%}
             {%- set lastHour= 25 + as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S")) | timestamp_custom('%H') | int(0) -%}
           {% elif readyHour < nowHour %}
             {% set lastHour = 24 %}
           {% else %}
             {%- set lastHour = as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S")) | timestamp_custom('%H') | int(0) -%}
           {% endif %}
-          {%- if state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and now().hour >=13 -%}
+          {%- if state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true -%}
             {%- set ns = namespace(counter=0, list=[], cheapestHour=today_at("00:00") + timedelta( hours = (24)), cheapestPrice=999.00) -%}
             {%- for i in range(firstHour, lastHour ) -%}
               {%- set ns.counter = 0.0 -%}
@@ -123,7 +145,7 @@ sensor:
         unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l1_available') | int(0) ) %}
-          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (24 - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
           {% if a > 16 %}
             {% set a = 16 %}
           {% endif %}
@@ -142,7 +164,7 @@ sensor:
         unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l2_available') | int(0) ) %}
-          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') |float(0) + (24 - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
           {% if a > 16 %}
             {% set a = 16 %}
           {% endif %}
@@ -161,7 +183,7 @@ sensor:
         unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l3_available') | int(0) ) %}
-          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') |float(0) + (24 - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
           {% if a > 16 %}
             {% set a = 16 %}
           {% endif %}
@@ -219,27 +241,28 @@ timer:
   charger_timer_amps:
     duration: 60
     name: Load balance timer
-    
-charger_resume:
-  alias: charger_resume
-  sequence:
-  - service: easee.set_charger_dynamic_limit
-    data:
-      charger_id: EHNYVJCV
-      current: 7
-    enabled: true
-  - service: easee.set_circuit_dynamic_limit
-    data:
-      circuit_id: 384858
-      currentP1: 7
-      currentP2: 7
-      currentP3: 7
-    enabled: true
-  - service: easee.resume
-    data:
-      charger_id: EHNYVJCV
-  mode: single
-  icon: mdi:play-circle-outline
+
+script:    
+  charger_resume:
+    alias: charger_resume
+    sequence:
+    - service: easee.set_charger_dynamic_limit
+      data:
+        charger_id: EHNYVJCV
+        current: 7
+      enabled: true
+    - service: easee.set_circuit_dynamic_limit
+      data:
+        circuit_id: 384858
+        currentP1: 7
+        currentP2: 7
+        currentP3: 7
+      enabled: true
+    - service: easee.resume
+      data:
+        charger_id: EHNYVJCV
+    mode: single
+    icon: mdi:play-circle-outline
 
 
 # Automations
@@ -286,22 +309,21 @@ automation:
         state: unknown
     - condition: state
       entity_id: input_select.car_charge_mode
-      state: "SoC"
+      state: 'SoC'
     action:
     - service: input_number.set_value
       data:
-        value: "{{ ((( ( states('number.id_4_target_state_of_charge') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100)*78) /9) | round(0,'ceil') }}"
-        # 78 kWh batt, 9 kW avg power
+        value: "{{ ((( ( states('number.id_4_target_state_of_charge') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('car_battery_capacity') | int(0) ) / states('average_charging_power') | int(1) ) | round(0,'ceil') }}"
       target:
         entity_id: input_number.car_needed_hours
     - service: input_datetime.set_datetime
       data:
-        time: '{{ as_timestamp(states(''sensor.cheapest_sequential_spot_hours_input'')) | timestamp_custom(''%H:%M'') }}'
+        time: "{{ as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) | timestamp_custom('%H:%M') }}"
       target:
         entity_id: input_datetime.device_start_time
     - service: input_datetime.set_datetime
       data:
-        time: '{{ ((as_timestamp(states(''sensor.cheapest_sequential_spot_hours_input'')) + (3600* states(''input_number.car_needed_hours'')|int(0) )) | timestamp_custom(''%H:%M'')) }}'
+        time: "{{ ((as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) + (3600* states('input_number.car_needed_hours')|int(0) )) | timestamp_custom('%H:%M')) }}"
       target:
         entity_id: input_datetime.device_end_time
     mode: single
