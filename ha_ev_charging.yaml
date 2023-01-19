@@ -218,6 +218,28 @@ timer:
   charger_timer_amps:
     duration: 60
     name: Load balance timer
+    
+charger_resume:
+  alias: charger_resume
+  sequence:
+  - service: easee.set_charger_dynamic_limit
+    data:
+      charger_id: EHNYVJCV
+      current: 7
+    enabled: true
+  - service: easee.set_circuit_dynamic_limit
+    data:
+      circuit_id: 384858
+      currentP1: 7
+      currentP2: 7
+      currentP3: 7
+    enabled: true
+  - service: easee.resume
+    data:
+      charger_id: EHNYVJCV
+  mode: single
+  icon: mdi:play-circle-outline
+
 
 # Automations
 automation:
