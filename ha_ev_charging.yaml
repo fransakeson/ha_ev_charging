@@ -93,6 +93,7 @@ sensor:
       # Calculate mean hourly price for startTime to endTime
       charging_mean_price: 
         friendly_name: "Mean price"
+        unit_of_measurement: 'SEK/kWh'
         value_template: >
           {%- set startHour = as_timestamp(strptime(states('input_datetime.device_start_time'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
           {%- set endHour = as_timestamp(strptime(states('input_datetime.device_end_time'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
@@ -206,11 +207,11 @@ sensor:
 # Helpers for start- and end time
 input_datetime:
   device_start_time:
-    name: Device Start Time
+    name: Charge Start Time
     has_time: true
     has_date: false
   device_end_time:
-    name: Device End Time
+    name: Charge End Time
     has_time: true
     has_date: false
   car_ready_at:
