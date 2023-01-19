@@ -18,9 +18,7 @@ homeassistant:
 ## Configuration / Setup ##
 See initial comments in `ha_ev_charging.yaml`
 
-## To do ##
-* Implement deadband when amp is close to max to avoid ping pong up and down
-* More comments/documentation
+
 
 
 
