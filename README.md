@@ -2,12 +2,12 @@
 Was based on https://github.com/kotope/ha_nordpool_cheapest_hours, along with the comments section in https://www.creatingsmarthome.com/index.php/2022/09/17/home-assistant-nord-pool-spot-prices-and-how-to-automate-devices-for-cheapest-hours/, but close to 100% is rewritten.
 
 ## This package uses ## 
-* Nordpool (https://github.com/custom-components/nordpool)
-* Easee (https://github.com/fondberg/easee_hass)
-* Volkswagen We Connect ID (https://github.com/mitch-dc/volkswagen_we_connect_id)
+* Nordpool (https://github.com/custom-components/nordpool) - Needed to figure out cheapest period.
+* Easee (https://github.com/fondberg/easee_hass) - Needed to control charger. Start, stop and set current. Should be easy to replace with an integration of your choice.
+* Volkswagen We Connect ID (https://github.com/mitch-dc/volkswagen_we_connect_id) - Only needed to know current SoC. Should be easy to replace with an integration of your choice.
 
 ## Install ##
-Download yaml package to your homeassistant configuration directory add add this block to `configuration.yaml`
+Download yaml package to your homeassistant configuration directory and add this block to `configuration.yaml`
 
 ```
 homeassistant:
@@ -18,12 +18,7 @@ homeassistant:
 ## Configuration / Setup ##
 See initial comments in `ha_ev_charging.yaml`
 
-## To do ##
-* If car_ready_at is tomorrow AND tomorrow_valid=false, only use today - CHECK IF DONE?
-* Implement deadband when amp is close to max to avoid ping pong up and down
-* More comments/documentation
-* Make code more general and less specific to my setup
-* Implement fallback without car integration (manual SoC and target SoC sliders)
+
 
 
 
