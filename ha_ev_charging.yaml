@@ -49,14 +49,16 @@ sensor:
           {%- set firstHour = ((as_timestamp(now() ) | timestamp_custom('%H')) | int(0) ) -%} 
           {%- set readyHour = as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S"))|timestamp_custom('%H')|int(0) -%}
           {%- set nowHour = as_timestamp(now(),"%H:%M:%S")|timestamp_custom('%H')|int(0) -%}
-          {%- if readyHour < nowHour and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true -%}
+          {%- if readyHour < nowHour and state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and 
+              state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true -%}
             {%- set lastHour= 25 + as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S")) | timestamp_custom('%H') | int(0) -%}
           {% elif readyHour < nowHour %}
             {% set lastHour = 24 %}
           {% else %}
             {%- set lastHour = as_timestamp(strptime(states('input_datetime.car_ready_at'),"%H:%M:%S")) | timestamp_custom('%H') | int(0) -%}
           {% endif %}
-          {%- if state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true -%}
+          {%- if state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and 
+              state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true -%}
             {%- set ns = namespace(counter=0, list=[], cheapestHour=today_at("00:00") + timedelta( hours = (24)), cheapestPrice=999.00) -%}
             {%- for i in range(firstHour, lastHour ) -%}
               {%- set ns.counter = 0.0 -%}
@@ -124,7 +126,8 @@ sensor:
             {% else %}
               Unknown
             {%- endif %}
-          {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true  %}
+          {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and 
+              state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true  %}
             {% set data = namespace(value=[]) %}
             {% set l=state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', sd) %}
             {%- for item in l[startHour:24] %}
@@ -151,7 +154,8 @@ sensor:
         unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l1_available') | int(0) ) %}
-          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT3') |float(0) +
+              (states('sensor.max_load_circuit') | float - states('sensor.l1_amp') | float) | round(0,'floor')) | int(0) %}
           {% if a > states('sensor.max_load_charger') | int(0) %}
             {% set a = states('sensor.max_load_charger') | int(0) %}
           {% endif %}
@@ -170,7 +174,8 @@ sensor:
         unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l2_available') | int(0) ) %}
-          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT4') |float(0) +
+              (states('sensor.max_load_circuit') | float - states('sensor.l2_amp') | float) | round(0,'floor')) | int(0) %}
           {% if a > states('sensor.max_load_charger') | int(0) %}
             {% set a = states('sensor.max_load_charger') | int(0) %}
           {% endif %}
@@ -189,7 +194,8 @@ sensor:
         unit_of_measurement: 'A'
         value_template: >
           {% set old_a = ( states('sensor.charger_l3_available') | int(0) ) %}
-          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') |float(0) + (states('sensor.max_load_circuit') | float - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
+          {% set a = (state_attr('sensor.ehnyvjcv_current', 'state_inCurrentT5') |float(0) + 
+              (states('sensor.max_load_circuit') | float - states('sensor.l3_amp') | float) | round(0,'floor')) | int(0) %}
           {% if a > states('sensor.max_load_charger') | int(0) %}
             {% set a = states('sensor.max_load_charger') | int(0) %}
           {% endif %}
@@ -282,7 +288,6 @@ script:
     mode: single
     icon: mdi:play-circle-outline
 
-
 # Start cooldown timer
 automation:
   - id: '1662198489322'
@@ -325,7 +330,9 @@ automation:
     action:
     - service: input_number.set_value
       data:
-        value: "{{ ((( ( states('input_number.car_local_target_soc') | float(1) - states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('sensor.car_battery_capacity') | int(0) ) / states('sensor.average_charging_power') | int(1) ) | round(0,'ceil') }}"
+        value: "{{ ((( ( states('input_number.car_local_target_soc') | float(1) - 
+            states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('sensor.car_battery_capacity') | int(0) ) / 
+            states('sensor.average_charging_power') | int(1) ) | round(0,'ceil') }}"
       target:
         entity_id: input_number.car_needed_hours
     - service: input_datetime.set_datetime
@@ -335,7 +342,8 @@ automation:
         entity_id: input_datetime.device_start_time
     - service: input_datetime.set_datetime
       data:
-        time: "{{ ((as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) + (3600* states('input_number.car_needed_hours')|int(0) )) | timestamp_custom('%H:%M')) }}"
+        time: "{{ ((as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) + 
+            (3600* states('input_number.car_needed_hours')|int(0) )) | timestamp_custom('%H:%M')) }}"
       target:
         entity_id: input_datetime.device_end_time
     mode: single
