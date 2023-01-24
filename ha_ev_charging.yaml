@@ -394,8 +394,10 @@ automation:
     alias: Turn off charger - SoC mode
     description: ''
     trigger:
-    - platform: time
-      at: input_datetime.device_end_time
+    - platform: template
+      value_template: "{% if states('sensor.id_4_state_of_charge') | int(0) >= states('input_number.car_local_target_soc') | int(0) %}true{% endif %}"
+#    - platform: time
+#      at: input_datetime.device_end_time
     condition:
     - condition: state
       entity_id: input_boolean.car_smart_charging
@@ -403,8 +405,8 @@ automation:
     - condition: state
       entity_id: input_select.car_charge_mode
       state: 'SoC'
-    - condition: template
-      value_template: "{{ states('sensor.id_4_state_of_charge') | int(0) >= states('input_number.car_local_target_soc') | int(0) }}"
+#    - condition: template
+#      value_template: "{{ states('sensor.id_4_state_of_charge') | int(0) >= states('input_number.car_local_target_soc') | int(0) }}"
     action:
     - service: input_boolean.turn_off
       entity_id: input_boolean.charger_run
@@ -417,7 +419,12 @@ automation:
     - platform: state
       entity_id: input_boolean.charger_run
       to: 'on'
-    condition: []
+    condition:
+    - condition: not
+      conditions:
+        - condition: state
+          entity_id: sensor.ehnyvjcv_status
+          state: 'disconnected'
     action:
     - service: script.charger_resume
     - service: timer.start
@@ -431,7 +438,10 @@ automation:
     - platform: state
       entity_id: input_boolean.charger_run
       to: 'off'
-    condition: []
+    condition:
+    - condition: state
+      entity_id: sensor.ehnyvjcv_status
+      state: 'charging'
     action:
     - service: easee.pause
       data: 
