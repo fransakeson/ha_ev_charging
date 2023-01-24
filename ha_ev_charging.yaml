@@ -162,9 +162,9 @@ sensor:
           {% if a < 1 %}
             {% set a = 1 %}
           {% endif %}
-          {% if a < old_a %}
+          {% if a < old_a and states('timer.charger_timer_decrease_amps') != 'active' %}
             {{ a }}
-          {% elif a > old_a and states('timer.charger_timer_amps') != 'active' %}
+          {% elif a > old_a and states('timer.charger_timer_increase_amps') != 'active' %}
             {{ a }}
           {% else %}
             {{ old_a }}
@@ -182,9 +182,9 @@ sensor:
           {% if a < 1 %}
             {% set a = 1 %}
           {% endif %}
-          {% if a < old_a %}
+          {% if a < old_a and states('timer.charger_timer_decrease_amps') != 'active' %}
             {{ a }}
-          {% elif a > old_a and states('timer.charger_timer_amps') != 'active' %}
+          {% elif a > old_a and states('timer.charger_timer_increase_amps') != 'active' %}
             {{ a }}
           {% else %}
             {{ old_a }}
@@ -202,9 +202,9 @@ sensor:
           {% if a < 1 %}
             {% set a = 1 %}
           {% endif %}
-          {% if a < old_a %}
+          {% if a < old_a and states('timer.charger_timer_decrease_amps') != 'active' %}
             {{ a }}
-          {% elif a > old_a and states('timer.charger_timer_amps') != 'active' %}
+          {% elif a > old_a and states('timer.charger_timer_increase_amps') != 'active' %}
             {{ a }}
           {% else %}
             {{ old_a }}
@@ -259,13 +259,16 @@ input_number:
     step: 10
     mode: slider
 
-# Timer for cooldown period after charger amps have been changed. Only relevant when increasing amp
+# Timer for cooldown period after charger amps have been changed. Different timers for increasing and decreasing amps
 timer:
-  charger_timer_amps:
+  charger_timer_increase_amps:
     duration: 60
-    name: Load balance timer
+    name: Load balance increase timer
+  charger_timer_decrease_amps:
+    duration: 20
+    name: Load balance decrease timer
 
-# Script to pause charger instead of stopping as stopping ends the session
+# Script to resume charging when needed
 script:    
   charger_resume:
     alias: charger_resume
@@ -291,7 +294,7 @@ script:
 # Start cooldown timer
 automation:
   - id: '1662198489322'
-    alias: 'Start amp timer'
+    alias: 'Start cooldown timer'
     description: ''
     trigger:
       - platform: state
@@ -305,14 +308,16 @@ automation:
         to: 'on'
     condition:
       - condition: state
-        entity_id: timer.charger_timer_amps
+        entity_id: timer.charger_timer_increase_amps
         state: idle
       - condition: state
         entity_id: input_boolean.charger_run
         state: 'on'
     action:
       - service: timer.start
-        entity_id: timer.charger_timer_amps
+        entity_id: timer.charger_timer_increase_amps
+      - service: timer.start
+        entity_id: timer.charger_timer_decrease_amps
 
   - id: '1663398489322'
     alias: 'Set end/start time for SoC mode'
@@ -442,7 +447,7 @@ automation:
     action:
     - service: script.charger_resume
     - service: timer.start
-      entity_id: timer.charger_timer_amps
+      entity_id: timer.charger_timer_increase_amps
     mode: single
 
   - id: '1663199614118'
@@ -458,7 +463,9 @@ automation:
       data: 
         charger_id: EHNYVJCV
     - service: timer.finish
-      entity_id: timer.charger_timer_amps
+      entity_id: timer.charger_timer_increase_amps
+    - service: timer.finish
+      entity_id: timer.charger_timer_decrease_amps
     mode: single
 
   - id: '1648389547513'
@@ -474,7 +481,11 @@ automation:
     - platform: event
       event_type: timer.finished
       event_data:
-        entity_id: timer.charger_timer_amps
+        entity_id: timer.charger_timer_increase_amps
+    - platform: event
+      event_type: timer.finished
+      event_data:
+        entity_id: timer.charger_timer_decrease_amps
       context: {}
     condition:
     - condition: state
@@ -507,3 +518,21 @@ automation:
       target:
         entity_id: number.id_4_target_state_of_charge
     mode: single
+
+  - id: '1672316547223'
+    alias: Pause charger if not started
+    description: Pause if charging is not supposed to be on
+    trigger:
+    - platform: state
+      entity_id: sensor.ehnyvjcv_status
+      to: 'charging'
+    condition:
+    - condition: state
+      entity_id: input_boolean.charger_run
+      state: 'off'
+    action:
+    - service: easee.pause
+      data: 
+        charger_id: EHNYVJCV
+    mode: single
+
