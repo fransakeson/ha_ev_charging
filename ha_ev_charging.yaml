@@ -268,8 +268,8 @@ timer:
     duration: 20
     name: Load balance decrease timer
 
-# Script to resume charging when needed
 script:    
+  # Script to resume charging when needed
   charger_resume:
     alias: charger_resume
     sequence:
@@ -291,8 +291,46 @@ script:
     mode: single
     icon: mdi:play-circle-outline
 
-# Start cooldown timer
+  # Script to update start and end time, to be triggered manually
+  update_times:
+    alias: Update start and end times
+    sequence:
+      - choose:
+        - conditions: "{{ is_state('input_select.car_charge_mode', 'SoC') }}"
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: > 
+                  {{ ((( ( states('input_number.car_local_target_soc') | float(1) -
+                      states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('sensor.car_battery_capacity') | int(0) ) /
+                      states('sensor.average_charging_power') | int(1) ) | round(0,'ceil') }}
+              target:
+                entity_id: input_number.car_needed_hours
+            - service: input_datetime.set_datetime
+              data:
+                time: "{{ as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) | timestamp_custom('%H:%M') }}"
+              target:
+                entity_id: input_datetime.device_start_time
+            - service: input_datetime.set_datetime
+              data:
+                time: "{{ ((as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) +
+                    (3600* states('input_number.car_needed_hours')|int(0) )) | timestamp_custom('%H:%M')) }}"
+              target:
+                entity_id: input_datetime.device_end_time
+      - choose:
+        - conditions: "{{ is_state('input_select.car_charge_mode', 'Schedule') }}"
+          sequence:
+            - service: input_number.set_value
+              data:
+                value: > 
+                  {% set startHour = as_timestamp(strptime(states('input_datetime.device_start_time'),"%H:%M:%S")) %}
+                  {% set endHour = as_timestamp(strptime(states('input_datetime.device_end_time'),"%H:%M:%S")) %}
+                  {{ (endHour-startHour)|timestamp_custom('%H')|int(2)-1 }}
+              target:
+                entity_id: input_number.car_needed_hours
+
 automation:
+  # Start cooldown timer
   - id: '1662198489322'
     alias: 'Start cooldown timer'
     description: ''
@@ -318,70 +356,6 @@ automation:
         entity_id: timer.charger_timer_increase_amps
       - service: timer.start
         entity_id: timer.charger_timer_decrease_amps
-
-  - id: '1663398489322'
-    alias: 'Set end/start time for SoC mode'
-    description: ''
-    trigger:
-    - platform: state
-      entity_id: sensor.ehnyvjcv_status
-      to: 'awaiting_start'
-    - platform: state
-      entity_id: input_select.car_charge_mode
-      to: 'SoC'
-    - platform: state
-      entity_id: input_number.car_local_target_soc
-    condition: []
-    action:
-    - service: input_number.set_value
-      data:
-        value: "{{ ((( ( states('input_number.car_local_target_soc') | float(1) - 
-            states('sensor.id_4_state_of_charge') | float(1) ) /100) * states('sensor.car_battery_capacity') | int(0) ) / 
-            states('sensor.average_charging_power') | int(1) ) | round(0,'ceil') }}"
-      target:
-        entity_id: input_number.car_needed_hours
-    - service: input_datetime.set_datetime
-      data:
-        time: "{{ as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) | timestamp_custom('%H:%M') }}"
-      target:
-        entity_id: input_datetime.device_start_time
-    - service: input_datetime.set_datetime
-      data:
-        time: "{{ ((as_timestamp(states('sensor.cheapest_sequential_spot_hours_input')) + 
-            (3600* states('input_number.car_needed_hours')|int(0) )) | timestamp_custom('%H:%M')) }}"
-      target:
-        entity_id: input_datetime.device_end_time
-    mode: single
-
-  # Set needed hours in Schedule mode
-  - id: '1663398489323'
-    alias: 'Set needed hours for Schedule mode'
-    description: ''
-    trigger:
-    - platform: state
-      entity_id: sensor.ehnyvjcv_status
-      to: 'awaiting_start'
-    - platform: state
-      entity_id: input_select.car_charge_mode
-      to: 'Schedule'
-    - platform: state
-      entity_id: input_datetime.device_start_time
-    - platform: state
-      entity_id: input_datetime.device_end_time
-    condition:
-    - condition: state
-      entity_id: input_select.car_charge_mode
-      state: 'Schedule'
-    action:
-    - service: input_number.set_value
-      data:
-        value: >
-          {%- set startHour = as_timestamp(strptime(states('input_datetime.device_start_time'),"%H:%M:%S")) -%}
-          {%- set endHour = as_timestamp(strptime(states('input_datetime.device_end_time'),"%H:%M:%S")) -%}
-          {{ (endHour-startHour)|timestamp_custom('%H')|int(0)-1 }}      
-      target:
-        entity_id: input_number.car_needed_hours
-    mode: single
 
   - id: '1663399614858'
     alias: Turn on switch on start time
