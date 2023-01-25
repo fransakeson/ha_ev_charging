@@ -13,8 +13,8 @@
 #
 # Electricity meter entities:
 # states('sensor.l1_amp') - circuit phase 1 load in ampere
-# states('sensor.l1_amp') - circuit phase 2 load in ampere
-# states('sensor.l1_amp') - circuit phase 3 load in ampere
+# states('sensor.l2_amp') - circuit phase 2 load in ampere
+# states('sensor.l3_amp') - circuit phase 3 load in ampere
 #
 # Car entities:
 # states('number.id_4_target_state_of_charge') - Target SoC in percent 
@@ -345,9 +345,9 @@ automation:
         entity_id: input_boolean.charger_run
         to: 'on'
     condition:
-      - condition: state
-        entity_id: timer.charger_timer_increase_amps
-        state: idle
+#      - condition: state
+#        entity_id: timer.charger_timer_increase_amps
+#        state: idle
       - condition: state
         entity_id: input_boolean.charger_run
         state: 'on'
@@ -356,6 +356,8 @@ automation:
         entity_id: timer.charger_timer_increase_amps
       - service: timer.start
         entity_id: timer.charger_timer_decrease_amps
+    mode: single
+    max_exceeded: silent
 
   - id: '1663399614858'
     alias: Turn on switch on start time
@@ -396,8 +398,6 @@ automation:
     trigger:
     - platform: template
       value_template: "{% if states('sensor.id_4_state_of_charge') | int(0) >= states('input_number.car_local_target_soc') | int(0) %}true{% endif %}"
-#    - platform: time
-#      at: input_datetime.device_end_time
     condition:
     - condition: state
       entity_id: input_boolean.car_smart_charging
@@ -405,8 +405,6 @@ automation:
     - condition: state
       entity_id: input_select.car_charge_mode
       state: 'SoC'
-#    - condition: template
-#      value_template: "{{ states('sensor.id_4_state_of_charge') | int(0) >= states('input_number.car_local_target_soc') | int(0) }}"
     action:
     - service: input_boolean.turn_off
       entity_id: input_boolean.charger_run
