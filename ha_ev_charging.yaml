@@ -369,6 +369,14 @@ automation:
     - condition: state
       entity_id: input_boolean.car_smart_charging
       state: 'on'
+    - condition: or
+      conditions:
+        - condition: state
+          entity_id: sensor.ehnyvjcv_status 
+          state: 'awaiting_start'
+        - condition: state
+          entity_id: sensor.ehnyvjcv_status 
+          state: 'ready_to_charge'
     action:
     - service: input_boolean.turn_on
       entity_id: input_boolean.charger_run
