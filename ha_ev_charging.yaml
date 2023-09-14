@@ -124,7 +124,7 @@ sensor:
             {%- if ns.counter > 0 -%}
               {{ ("%.3f"|format(data.value| sum(attribute='value'))|float(0)/ns.counter) | round(3) }}
             {% else %}
-              Unknown
+              None
             {%- endif %}
           {% elif state_attr('sensor.nordpool_kwh_se4_sek_3_10_025', 'tomorrow_valid') == true and 
               state_attr("sensor.nordpool_kwh_se4_sek_3_10_025", "tomorrow") [1] is number == true  %}
@@ -142,10 +142,10 @@ sensor:
             {%- if ns.counter > 0 -%}
               {{ ("%.3f"|format(data.value| sum(attribute='value'))|float(0)/ns.counter) | round(3) }}
             {% else %}
-              Unknown
+              None
             {% endif %}
           {% else %}
-            Unknown
+            None
           {% endif %}
 
       # Calculate load available to the charger
